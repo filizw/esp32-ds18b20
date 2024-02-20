@@ -1,4 +1,6 @@
 **/.devcontainer
 **/.vscode
+**/build
 **/main
 *.txt
+sdkconfig*
