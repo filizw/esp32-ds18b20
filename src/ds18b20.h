@@ -26,6 +26,8 @@ typedef struct {
     gpio_num_t ow_pin;
 } ds18b20_handler_t;
 
-void ds18b20_init(const ds18b20_handler_t *const ds18b20_handler);
+void ds18b20_reset(const ds18b20_handler_t *const ds18b20_handler);
+void ds18b20_send_command(const ds18b20_handler_t *const ds18b20_handler, uint8_t command);
+void ds18b20_get_raw_temperature(const ds18b20_handler_t *const ds18b20_handler, uint16_t *const raw_temp);
 
 #endif
