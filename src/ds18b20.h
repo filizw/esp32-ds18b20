@@ -22,12 +22,27 @@
 #define DS18B20_RECALL_E 0xB8
 #define DS18B20_READ_POWER_SUPPLY 0xB4
 
+typedef enum {
+    DS18B20_RESOLUTION_9_BIT,
+    DS18B20_RESOLUTION_10_BIT,
+    DS18B20_RESOLUTION_11_BIT,
+    DS18B20_RESOLUTION_12_BIT
+} ds18b20_resolution_t;
+
 typedef struct {
     gpio_num_t ow_pin;
+    ds18b20_resolution_t resolution;
 } ds18b20_handler_t;
+
+typedef struct {
+    int8_t trigger_high;
+    int8_t trigger_low;
+    ds18b20_resolution_t resolution;
+} ds18b20_config_t;
 
 void ds18b20_reset(const ds18b20_handler_t *const ds18b20_handler);
 void ds18b20_send_command(const ds18b20_handler_t *const ds18b20_handler, uint8_t command);
-void ds18b20_get_raw_temperature(const ds18b20_handler_t *const ds18b20_handler, uint16_t *const raw_temp);
+void ds18b20_configure(const ds18b20_handler_t *const ds18b20_handler, const ds18b20_config_t *const ds18b20_config);
+void ds18b20_read_temperature(const ds18b20_handler_t *const ds18b20_handler, float *const temperature);
 
 #endif
