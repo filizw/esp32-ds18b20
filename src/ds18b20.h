@@ -8,19 +8,19 @@
 #include "rom/ets_sys.h"
 
 // ROM COMMANDS
-#define DS18B20_SEARCH_ROM 0xF0
-#define DS18B20_READ_ROM 0x33
-#define DS18B20_MATCH_ROM 0x55
-#define DS18B20_SKIP_ROM 0xCC
-#define DS18B20_ALARM_SEARCH 0xEC
+#define DS18B20_COMMAND_SEARCH_ROM 0xF0
+#define DS18B20_COMMAND_READ_ROM 0x33
+#define DS18B20_COMMAND_MATCH_ROM 0x55
+#define DS18B20_COMMAND_SKIP_ROM 0xCC
+#define DS18B20_COMMAND_ALARM_SEARCH 0xEC
 
 // FUNCTION COMMANDS
-#define DS18B20_CONVERT 0x44
-#define DS18B20_WRITE_SCRATCHPAD 0x4E
-#define DS18B20_READ_SCRATCHPAD 0xBE
-#define DS18B20_COPY_SCRATCHPAD 0x48
-#define DS18B20_RECALL_E 0xB8
-#define DS18B20_READ_POWER_SUPPLY 0xB4
+#define DS18B20_COMMAND_CONVERT 0x44
+#define DS18B20_COMMAND_WRITE_SCRATCHPAD 0x4E
+#define DS18B20_COMMAND_READ_SCRATCHPAD 0xBE
+#define DS18B20_COMMAND_COPY_SCRATCHPAD 0x48
+#define DS18B20_COMMAND_RECALL_E 0xB8
+#define DS18B20_COMMAND_READ_POWER_SUPPLY 0xB4
 
 #define DS18B20_SCRATCHPAD_SIZE 9
 
@@ -44,8 +44,9 @@ typedef struct {
 
 void ds18b20_reset(const ds18b20_handler_t *const ds18b20_handler);
 void ds18b20_send_command(const ds18b20_handler_t *const ds18b20_handler, const uint8_t command);
-void ds18b20_configure(ds18b20_handler_t *const ds18b20_handler, const ds18b20_config_t *const ds18b20_config);
+void ds18b20_write_scratchpad(ds18b20_handler_t *const ds18b20_handler, const uint8_t *const data);
 void ds18b20_read_scratchpad(const ds18b20_handler_t *const ds18b20_handler, uint8_t *const buffer, const uint8_t buffer_size);
+void ds18b20_configure(ds18b20_handler_t *const ds18b20_handler, const ds18b20_config_t *const ds18b20_config);
 void ds18b20_read_temperature(const ds18b20_handler_t *const ds18b20_handler, float *const temperature);
 
 #endif

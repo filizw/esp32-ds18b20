@@ -97,28 +97,26 @@ void ds18b20_send_command(const ds18b20_handler_t *const ds18b20_handler, const 
     ds18b20_write_byte(ds18b20_handler, command);
 }
 
-void ds18b20_configure(ds18b20_handler_t *const ds18b20_handler, const ds18b20_config_t *const ds18b20_config) {
-    if(ds18b20_handler != NULL && ds18b20_config != NULL) {
+void ds18b20_write_scratchpad(ds18b20_handler_t *const ds18b20_handler, const uint8_t *const data) {
+    if(ds18b20_handler != NULL && data != NULL) {
         ds18b20_reset(ds18b20_handler);
-        ds18b20_send_command(ds18b20_handler, DS18B20_SKIP_ROM);
-        ds18b20_send_command(ds18b20_handler, DS18B20_WRITE_SCRATCHPAD);
+        ds18b20_send_command(ds18b20_handler, DS18B20_COMMAND_SKIP_ROM);
+        ds18b20_send_command(ds18b20_handler, DS18B20_COMMAND_WRITE_SCRATCHPAD);
 
-        ds18b20_write_byte(ds18b20_handler, ds18b20_config->trigger_high);
-        ds18b20_write_byte(ds18b20_handler, ds18b20_config->trigger_low);
-        ds18b20_write_byte(ds18b20_handler, 0 | (ds18b20_config->resolution << 5));
-
-        ds18b20_handler->resolution = ds18b20_handler->resolution;
+        ds18b20_write_byte(ds18b20_handler, data[0]);
+        ds18b20_write_byte(ds18b20_handler, data[1]);
+        ds18b20_write_byte(ds18b20_handler, data[2]);
     }
     else {
-        ESP_LOGE(TAG, "ds18b20_handler or ds18b20_config is NULL");
+        ESP_LOGE(TAG, "ds18b20_handler or data is NULL");
     }
 }
 
 void ds18b20_read_scratchpad(const ds18b20_handler_t *const ds18b20_handler, uint8_t *const buffer, const uint8_t buffer_size) {
     if(ds18b20_handler != NULL && buffer != NULL) {
         ds18b20_reset(ds18b20_handler);
-        ds18b20_send_command(ds18b20_handler, DS18B20_SKIP_ROM);
-        ds18b20_send_command(ds18b20_handler, DS18B20_READ_SCRATCHPAD);
+        ds18b20_send_command(ds18b20_handler, DS18B20_COMMAND_SKIP_ROM);
+        ds18b20_send_command(ds18b20_handler, DS18B20_COMMAND_READ_SCRATCHPAD);
 
         for(uint8_t i = 0; i < buffer_size && i < DS18B20_SCRATCHPAD_SIZE; i++) {
             ds18b20_read_byte(ds18b20_handler, &buffer[i]);
@@ -132,14 +130,31 @@ void ds18b20_read_scratchpad(const ds18b20_handler_t *const ds18b20_handler, uin
     }
 }
 
+void ds18b20_configure(ds18b20_handler_t *const ds18b20_handler, const ds18b20_config_t *const ds18b20_config) {
+    if(ds18b20_handler != NULL && ds18b20_config != NULL) {
+        const uint8_t data[] = {
+            ds18b20_config->trigger_high,
+            ds18b20_config->trigger_low,
+            (ds18b20_config->resolution << 5)
+        };
+
+        ds18b20_write_scratchpad(ds18b20_handler, data);
+
+        ds18b20_handler->resolution = ds18b20_handler->resolution;
+    }
+    else {
+        ESP_LOGE(TAG, "ds18b20_handler or ds18b20_config is NULL");
+    }
+}
+
 void ds18b20_read_temperature(const ds18b20_handler_t *const ds18b20_handler, float *const temperature) {
     if(ds18b20_handler != NULL && temperature != NULL) {
         uint8_t raw_temp[2] = {0};
         uint8_t mask = 0xff;
 
         ds18b20_reset(ds18b20_handler);
-        ds18b20_send_command(ds18b20_handler, DS18B20_SKIP_ROM);
-        ds18b20_send_command(ds18b20_handler, DS18B20_CONVERT);
+        ds18b20_send_command(ds18b20_handler, DS18B20_COMMAND_SKIP_ROM);
+        ds18b20_send_command(ds18b20_handler, DS18B20_COMMAND_CONVERT);
 
         switch(ds18b20_handler->resolution) {
             case DS18B20_RESOLUTION_9_BIT:
