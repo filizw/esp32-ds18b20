@@ -22,6 +22,8 @@
 #define DS18B20_RECALL_E 0xB8
 #define DS18B20_READ_POWER_SUPPLY 0xB4
 
+#define DS18B20_SCRATCHPAD_SIZE 9
+
 typedef enum {
     DS18B20_RESOLUTION_9_BIT,
     DS18B20_RESOLUTION_10_BIT,
@@ -41,8 +43,9 @@ typedef struct {
 } ds18b20_config_t;
 
 void ds18b20_reset(const ds18b20_handler_t *const ds18b20_handler);
-void ds18b20_send_command(const ds18b20_handler_t *const ds18b20_handler, uint8_t command);
+void ds18b20_send_command(const ds18b20_handler_t *const ds18b20_handler, const uint8_t command);
 void ds18b20_configure(ds18b20_handler_t *const ds18b20_handler, const ds18b20_config_t *const ds18b20_config);
+void ds18b20_read_scratchpad(const ds18b20_handler_t *const ds18b20_handler, uint8_t *const buffer, const uint8_t buffer_size);
 void ds18b20_read_temperature(const ds18b20_handler_t *const ds18b20_handler, float *const temperature);
 
 #endif

@@ -93,7 +93,7 @@ void ds18b20_reset(const ds18b20_handler_t *const ds18b20_handler) {
     }
 }
 
-void ds18b20_send_command(const ds18b20_handler_t *const ds18b20_handler, uint8_t command) {
+void ds18b20_send_command(const ds18b20_handler_t *const ds18b20_handler, const uint8_t command) {
     ds18b20_write_byte(ds18b20_handler, command);
 }
 
@@ -114,11 +114,28 @@ void ds18b20_configure(ds18b20_handler_t *const ds18b20_handler, const ds18b20_c
     }
 }
 
+void ds18b20_read_scratchpad(const ds18b20_handler_t *const ds18b20_handler, uint8_t *const buffer, const uint8_t buffer_size) {
+    if(ds18b20_handler != NULL && buffer != NULL) {
+        ds18b20_reset(ds18b20_handler);
+        ds18b20_send_command(ds18b20_handler, DS18B20_SKIP_ROM);
+        ds18b20_send_command(ds18b20_handler, DS18B20_READ_SCRATCHPAD);
+
+        for(uint8_t i = 0; i < buffer_size && i < DS18B20_SCRATCHPAD_SIZE; i++) {
+            ds18b20_read_byte(ds18b20_handler, &buffer[i]);
+        }
+
+        if(buffer_size < DS18B20_SCRATCHPAD_SIZE)
+            ds18b20_reset(ds18b20_handler);
+    }
+    else {
+        ESP_LOGE(TAG, "ds18b20_handler or scratchpad is NULL");
+    }
+}
+
 void ds18b20_read_temperature(const ds18b20_handler_t *const ds18b20_handler, float *const temperature) {
     if(ds18b20_handler != NULL && temperature != NULL) {
-        uint8_t ls_byte = 0;
-        uint8_t ls_byte_mask = 0xff;
-        uint8_t ms_byte = 0;
+        uint8_t raw_temp[2] = {0};
+        uint8_t mask = 0xff;
 
         ds18b20_reset(ds18b20_handler);
         ds18b20_send_command(ds18b20_handler, DS18B20_SKIP_ROM);
@@ -126,15 +143,15 @@ void ds18b20_read_temperature(const ds18b20_handler_t *const ds18b20_handler, fl
 
         switch(ds18b20_handler->resolution) {
             case DS18B20_RESOLUTION_9_BIT:
-                ls_byte_mask = 0xf8;
+                mask = 0xf8;
                 ets_delay_us(93750);
                 break;
             case DS18B20_RESOLUTION_10_BIT:
-                ls_byte_mask = 0xfc;
+                mask = 0xfc;
                 ets_delay_us(187500);
                 break;
             case DS18B20_RESOLUTION_11_BIT:
-                ls_byte_mask = 0xfe;
+                mask = 0xfe;
                 ets_delay_us(375000);
                 break;
             case DS18B20_RESOLUTION_12_BIT:
@@ -142,16 +159,11 @@ void ds18b20_read_temperature(const ds18b20_handler_t *const ds18b20_handler, fl
                 break;
         }
 
-        ds18b20_reset(ds18b20_handler);
-        ds18b20_send_command(ds18b20_handler, DS18B20_SKIP_ROM);
-        ds18b20_send_command(ds18b20_handler, DS18B20_READ_SCRATCHPAD);
-        ds18b20_read_byte(ds18b20_handler, &ls_byte);
-        ds18b20_read_byte(ds18b20_handler, &ms_byte);
-        ds18b20_reset(ds18b20_handler);
+        ds18b20_read_scratchpad(ds18b20_handler, raw_temp, 2);
 
-        *temperature = ((ls_byte & ls_byte_mask) | (ms_byte << 8)) / 16.0f;
+        *temperature = ((raw_temp[1] << 8) | (raw_temp[0] & mask)) / 16.0f;
     }
     else {
-        ESP_LOGE(TAG, "ds18b20_handler or temperature is NULL"); 
+        ESP_LOGE(TAG, "ds18b20_handler or temperature is NULL");
     }
 }
