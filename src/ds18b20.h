@@ -22,6 +22,9 @@
 #define DS18B20_COMMAND_RECALL_E 0xB8
 #define DS18B20_COMMAND_READ_POWER_SUPPLY 0xB4
 
+#define DS18B20_MAX_TEMPERATURE 0x7D
+#define DS18B20_MIN_TEMPERATURE 0xC9
+
 #define DS18B20_SCRATCHPAD_SIZE 9
 
 typedef enum {
@@ -32,15 +35,17 @@ typedef enum {
 } ds18b20_resolution_t;
 
 typedef struct {
-    gpio_num_t ow_pin;
-    ds18b20_resolution_t resolution;
-} ds18b20_handler_t;
-
-typedef struct {
-    uint8_t trigger_high;
-    uint8_t trigger_low;
+    int8_t trigger_high;
+    int8_t trigger_low;
     ds18b20_resolution_t resolution;
 } ds18b20_config_t;
+
+typedef struct {
+    gpio_num_t ow_pin;
+
+    float *temperature;
+    ds18b20_config_t *config;
+} ds18b20_handler_t;
 
 void ds18b20_reset(const ds18b20_handler_t *const ds18b20_handler);
 void ds18b20_send_command(const ds18b20_handler_t *const ds18b20_handler, const uint8_t command);
@@ -48,5 +53,6 @@ void ds18b20_write_scratchpad(ds18b20_handler_t *const ds18b20_handler, const ui
 void ds18b20_read_scratchpad(const ds18b20_handler_t *const ds18b20_handler, uint8_t *const buffer, const uint8_t buffer_size);
 void ds18b20_configure(ds18b20_handler_t *const ds18b20_handler, const ds18b20_config_t *const ds18b20_config);
 void ds18b20_read_temperature(const ds18b20_handler_t *const ds18b20_handler, float *const temperature);
+void ds18b20_read_configuration(const ds18b20_handler_t *const ds18b20_handler);
 
 #endif

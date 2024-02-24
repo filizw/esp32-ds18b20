@@ -140,7 +140,9 @@ void ds18b20_configure(ds18b20_handler_t *const ds18b20_handler, const ds18b20_c
 
         ds18b20_write_scratchpad(ds18b20_handler, data);
 
-        ds18b20_handler->resolution = ds18b20_handler->resolution;
+        if(ds18b20_handler->config != NULL) {
+            *ds18b20_handler->config = *ds18b20_config;
+        }
     }
     else {
         ESP_LOGE(TAG, "ds18b20_handler or ds18b20_config is NULL");
@@ -150,23 +152,19 @@ void ds18b20_configure(ds18b20_handler_t *const ds18b20_handler, const ds18b20_c
 void ds18b20_read_temperature(const ds18b20_handler_t *const ds18b20_handler, float *const temperature) {
     if(ds18b20_handler != NULL && temperature != NULL) {
         uint8_t raw_temp[2] = {0};
-        uint8_t mask = 0xff;
 
         ds18b20_reset(ds18b20_handler);
         ds18b20_send_command(ds18b20_handler, DS18B20_COMMAND_SKIP_ROM);
         ds18b20_send_command(ds18b20_handler, DS18B20_COMMAND_CONVERT);
 
-        switch(ds18b20_handler->resolution) {
+        switch(ds18b20_handler->config->resolution) {
             case DS18B20_RESOLUTION_9_BIT:
-                mask = 0xf8;
                 ets_delay_us(93750);
                 break;
             case DS18B20_RESOLUTION_10_BIT:
-                mask = 0xfc;
                 ets_delay_us(187500);
                 break;
             case DS18B20_RESOLUTION_11_BIT:
-                mask = 0xfe;
                 ets_delay_us(375000);
                 break;
             case DS18B20_RESOLUTION_12_BIT:
@@ -176,9 +174,32 @@ void ds18b20_read_temperature(const ds18b20_handler_t *const ds18b20_handler, fl
 
         ds18b20_read_scratchpad(ds18b20_handler, raw_temp, 2);
 
+        const uint8_t mask = 0xff << (0x03 - ds18b20_handler->config->resolution);
         *temperature = ((raw_temp[1] << 8) | (raw_temp[0] & mask)) / 16.0f;
     }
     else {
         ESP_LOGE(TAG, "ds18b20_handler or temperature is NULL");
+    }
+}
+
+void ds18b20_read_configuration(const ds18b20_handler_t *const ds18b20_handler) {
+    if(ds18b20_handler != NULL) {
+        uint8_t buffer[5] = {0};
+
+        ds18b20_read_scratchpad(ds18b20_handler, buffer, 5);
+
+        if(ds18b20_handler->temperature != NULL) {
+            const uint8_t mask = 0xff << (0x03 - ds18b20_handler->config->resolution);
+            *ds18b20_handler->temperature = ((buffer[1] << 8) | (buffer[0] & mask)) / 16.0f;
+        }
+
+        if(ds18b20_handler->config != NULL) {
+            ds18b20_handler->config->trigger_high = buffer[2];
+            ds18b20_handler->config->trigger_low = buffer[3];
+            ds18b20_handler->config->resolution = (buffer[4] >> 5) & 0x03;
+        }
+    }
+    else {
+        ESP_LOGE(TAG, "ds18b20_handler is NULL");
     }
 }
