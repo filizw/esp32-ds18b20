@@ -97,19 +97,17 @@ void ds18b20_send_command(const ds18b20_handler_t *const ds18b20_handler, uint8_
     ds18b20_write_byte(ds18b20_handler, command);
 }
 
-void ds18b20_configure(const ds18b20_handler_t *const ds18b20_handler, const ds18b20_config_t *const ds18b20_config) {
+void ds18b20_configure(ds18b20_handler_t *const ds18b20_handler, const ds18b20_config_t *const ds18b20_config) {
     if(ds18b20_handler != NULL && ds18b20_config != NULL) {
-        const uint8_t th_register = 1 & ds18b20_config->trigger_high;
-        const uint8_t tl_register = 1 & ds18b20_config->trigger_low;
-        const uint8_t config_register = 0 | (ds18b20_config->resolution << 5);
-
         ds18b20_reset(ds18b20_handler);
         ds18b20_send_command(ds18b20_handler, DS18B20_SKIP_ROM);
         ds18b20_send_command(ds18b20_handler, DS18B20_WRITE_SCRATCHPAD);
 
-        ds18b20_write_byte(ds18b20_handler, th_register);
-        ds18b20_write_byte(ds18b20_handler, tl_register);
-        ds18b20_write_byte(ds18b20_handler, config_register);
+        ds18b20_write_byte(ds18b20_handler, ds18b20_config->trigger_high);
+        ds18b20_write_byte(ds18b20_handler, ds18b20_config->trigger_low);
+        ds18b20_write_byte(ds18b20_handler, 0 | (ds18b20_config->resolution << 5));
+
+        ds18b20_handler->resolution = ds18b20_handler->resolution;
     }
     else {
         ESP_LOGE(TAG, "ds18b20_handler or ds18b20_config is NULL");
@@ -119,6 +117,7 @@ void ds18b20_configure(const ds18b20_handler_t *const ds18b20_handler, const ds1
 void ds18b20_read_temperature(const ds18b20_handler_t *const ds18b20_handler, float *const temperature) {
     if(ds18b20_handler != NULL && temperature != NULL) {
         uint8_t ls_byte = 0;
+        uint8_t ls_byte_mask = 0xff;
         uint8_t ms_byte = 0;
 
         ds18b20_reset(ds18b20_handler);
@@ -127,12 +126,15 @@ void ds18b20_read_temperature(const ds18b20_handler_t *const ds18b20_handler, fl
 
         switch(ds18b20_handler->resolution) {
             case DS18B20_RESOLUTION_9_BIT:
+                ls_byte_mask = 0xf8;
                 ets_delay_us(93750);
                 break;
             case DS18B20_RESOLUTION_10_BIT:
+                ls_byte_mask = 0xfc;
                 ets_delay_us(187500);
                 break;
             case DS18B20_RESOLUTION_11_BIT:
+                ls_byte_mask = 0xfe;
                 ets_delay_us(375000);
                 break;
             case DS18B20_RESOLUTION_12_BIT:
@@ -147,7 +149,7 @@ void ds18b20_read_temperature(const ds18b20_handler_t *const ds18b20_handler, fl
         ds18b20_read_byte(ds18b20_handler, &ms_byte);
         ds18b20_reset(ds18b20_handler);
 
-        *temperature = (ls_byte | (ms_byte << 8)) / 16.0f;
+        *temperature = ((ls_byte & ls_byte_mask) | (ms_byte << 8)) / 16.0f;
     }
     else {
         ESP_LOGE(TAG, "ds18b20_handler or temperature is NULL"); 

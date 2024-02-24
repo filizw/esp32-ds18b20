@@ -35,14 +35,14 @@ typedef struct {
 } ds18b20_handler_t;
 
 typedef struct {
-    int8_t trigger_high;
-    int8_t trigger_low;
+    uint8_t trigger_high;
+    uint8_t trigger_low;
     ds18b20_resolution_t resolution;
 } ds18b20_config_t;
 
 void ds18b20_reset(const ds18b20_handler_t *const ds18b20_handler);
 void ds18b20_send_command(const ds18b20_handler_t *const ds18b20_handler, uint8_t command);
-void ds18b20_configure(const ds18b20_handler_t *const ds18b20_handler, const ds18b20_config_t *const ds18b20_config);
+void ds18b20_configure(ds18b20_handler_t *const ds18b20_handler, const ds18b20_config_t *const ds18b20_config);
 void ds18b20_read_temperature(const ds18b20_handler_t *const ds18b20_handler, float *const temperature);
 
 #endif
