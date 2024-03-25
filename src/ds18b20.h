@@ -44,7 +44,8 @@ typedef enum {
     DS18B20_OK = 0,
     DS18B20_ERROR_INVALID_HANDLE,
     DS18B20_ERROR_INVALID_CONFIG,
-    DS18B20_ERROR_INVALID_ARGUMENT
+    DS18B20_ERROR_INVALID_ARGUMENT,
+    DS18B20_ERROR_RESET_FAILED
 } ds18b20_error_t;
 
 typedef struct {
@@ -60,20 +61,37 @@ typedef struct {
     uint8_t scratchpad[DS18B20_SCRATCHPAD_SIZE];
 } ds18b20_handle_t;
 
+// initializes all communication with DS18B20
 ds18b20_error_t ds18b20_reset(const ds18b20_handle_t *const handle);
 
+// sends commands to communicate with DS18B20
 ds18b20_error_t ds18b20_send_command(const ds18b20_handle_t *const handle, const uint8_t command);
 
+// reads the DS18B20's 64-bit ROM, can only be used when there is one slave on the bus
 ds18b20_error_t ds18b20_read_rom(ds18b20_handle_t *const handle);
 
+// allows the master to write 3 bytes of data to the DS18B20’s scratchpad
 ds18b20_error_t ds18b20_write_scratchpad(const ds18b20_handle_t *const handle, const uint8_t *const data);
+// allows the master to read the contents of the scratchpad
 ds18b20_error_t ds18b20_read_scratchpad(ds18b20_handle_t *const handle, const uint8_t num_of_bytes_to_read);
 
+// initializes DS18B20
 ds18b20_error_t ds18b20_init(ds18b20_handle_t *const handle, const ds18b20_config_t *const config);
+
+// initializes DS18B20 with default settings
+ds18b20_error_t ds18b20_init_default(ds18b20_handle_t *const handle);
+
+// configures DS18B20's trigger low, trigger high values and resolution
 ds18b20_error_t ds18b20_configure(ds18b20_handle_t *const handle, const ds18b20_config_t *const config);
+
+// reads raw temperature from DS18B20 and stores it in handle
+// if temperature argument is not NULL, it stores converted raw temperature value there
 ds18b20_error_t ds18b20_read_temperature(ds18b20_handle_t *const handle, float *const temperature);
 
+// converts raw temperature stored in handle and stores it in temperature argument
 ds18b20_error_t ds18b20_get_temperature(const ds18b20_handle_t *const handle, float *const temperature);
+
+// gets trigger low, trigger high and resolution values stored in the DS18B20
 ds18b20_error_t ds18b20_get_configuration(const ds18b20_handle_t *const handle, ds18b20_config_t *const config);
 
 #endif
