@@ -1,6 +1,6 @@
 #include "ds18b20.h"
 
-static const char *TAG = "ds18b20";
+//static const char *TAG = "ds18b20";
 
 static const uint32_t LEVEL_LOW = 0;
 //static const uint32_t LEVEL_HIGH = 1;

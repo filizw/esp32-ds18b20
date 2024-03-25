@@ -1,6 +1,9 @@
-**/.devcontainer
-**/.vscode
-**/build
-**/main
-*.txt
+/.devcontainer
+/.vscode
+/build
+/main
+/*.txt
 sdkconfig*
+
+!example/*
+example/build
