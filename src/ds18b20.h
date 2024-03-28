@@ -30,31 +30,45 @@
 #define DS18B20_ROM_CODE_SIZE 8
 #define DS18B20_SCRATCHPAD_SIZE 9
 
+// default trigger settings
+#define DS18B20_TRIGGER_HIGH_DEFAULT DS18B20_MAX_TEMPERATURE
+#define DS18B20_TRIGGER_LOW_DEFAULT DS18B20_MIN_TEMPERATURE
 
+#define DS18B20_TAG "ds18b20"
 
 typedef enum {
     DS18B20_RESOLUTION_9_BIT = 0b00011111,
     DS18B20_RESOLUTION_10_BIT = 0b00111111,
     DS18B20_RESOLUTION_11_BIT = 0b01011111,
-    DS18B20_RESOLUTION_12_BIT = 0b01111111
+    DS18B20_RESOLUTION_12_BIT = 0b01111111,
+    DS18B20_RESOLUTION_DEFAULT = DS18B20_RESOLUTION_12_BIT
 } ds18b20_resolution_t;
 
 typedef enum {
-    DS18B20_ERROR_UNKNOWN = -1,
     DS18B20_OK = 0,
-    DS18B20_ERROR_INVALID_HANDLE,
-    DS18B20_ERROR_INVALID_CONFIG,
-    DS18B20_ERROR_INVALID_ARGUMENT,
-    DS18B20_ERROR_RESET_FAILED
+    DS18B20_ERROR_HANDLE_NULL,
+    DS18B20_ERROR_CONFIG_NULL,
+    DS18B20_ERROR_ARGUMENT_NULL,
+    DS18B20_ERROR_RESET_FAILED,
+    DS18B20_ERROR_READ_ROM_FAILED,
+    DS18B20_ERROR_WRITE_SCRATCHPAD_FAILED,
+    DS18B20_ERROR_READ_SCRATCHPAD_FAILED,
+    DS18B20_ERROR_INIT_FAILED,
+    DS18B20_ERROR_READ_TEMPERATURE_FAILED,
+    DS18B20_ERROR_CONFIGURATION_FAILED,
+    DS18B20_ERROR_NOT_INITIALIZED
 } ds18b20_error_t;
 
 typedef struct {
+    gpio_num_t gpio_pin;
     int8_t trigger_high;
     int8_t trigger_low;
     ds18b20_resolution_t resolution;
 } ds18b20_config_t;
 
 typedef struct {
+    uint8_t is_init;
+
     gpio_num_t gpio_pin;
 
     uint8_t rom_code[DS18B20_ROM_CODE_SIZE];
@@ -79,7 +93,7 @@ ds18b20_error_t ds18b20_read_scratchpad(ds18b20_handle_t *const handle, const ui
 ds18b20_error_t ds18b20_init(ds18b20_handle_t *const handle, const ds18b20_config_t *const config);
 
 // initializes DS18B20 with default settings
-ds18b20_error_t ds18b20_init_default(ds18b20_handle_t *const handle);
+ds18b20_error_t ds18b20_init_default(ds18b20_handle_t *const handle, const gpio_num_t gpio_pin);
 
 // configures DS18B20's trigger low, trigger high values and resolution
 ds18b20_error_t ds18b20_configure(ds18b20_handle_t *const handle, const ds18b20_config_t *const config);
@@ -93,5 +107,11 @@ ds18b20_error_t ds18b20_get_temperature(const ds18b20_handle_t *const handle, fl
 
 // gets trigger low, trigger high and resolution values stored in the DS18B20
 ds18b20_error_t ds18b20_get_configuration(const ds18b20_handle_t *const handle, ds18b20_config_t *const config);
+
+// returns string corresponding to a error code
+const char *ds18b20_error_to_string(const ds18b20_error_t error);
+
+// checks if error occured and prints it to the serial monitor
+bool ds18b20_error_check(const ds18b20_error_t error, const char *const tag, const char *const message);
 
 #endif
