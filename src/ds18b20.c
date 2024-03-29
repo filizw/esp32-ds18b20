@@ -222,6 +222,7 @@ ds18b20_error_t ds18b20_init(ds18b20_handle_t *const handle, const ds18b20_confi
     }
     
     handle->gpio_pin = config->gpio_pin;
+    handle->crc_enabled = config->enable_crc;
 
     if(ds18b20_error_check(ds18b20_configure(handle, config), DS18B20_TAG, "init/configure: ") || // send configuation to the DS18B20
        ds18b20_error_check(ds18b20_read_rom(handle), DS18B20_TAG, "init/read_rom: ")) // read ROM code and store it in a handle

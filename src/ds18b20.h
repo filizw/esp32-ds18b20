@@ -117,7 +117,7 @@ ds18b20_error_t ds18b20_get_temperature(const ds18b20_handle_t *const handle, fl
 // gets trigger low, trigger high and resolution values stored in the DS18B20
 ds18b20_error_t ds18b20_get_configuration(const ds18b20_handle_t *const handle, ds18b20_config_t *const config);
 
-// returns string corresponding to a error code
+// returns string corresponding to an error code
 const char *ds18b20_error_to_string(const ds18b20_error_t error);
 
 // checks if error occured and prints it to the serial monitor
