@@ -12,7 +12,27 @@ static const char *const ds18b20_error_strings[] = {
     "DS18B20_ERROR_INIT_FAILED",
     "DS18B20_ERROR_READ_TEMPERATURE_FAILED",
     "DS18B20_ERROR_CONFIGURATION_FAILED",
-    "DS18B20_ERROR_NOT_INITIALIZED"
+    "DS18B20_ERROR_NOT_INITIALIZED",
+    "DS18B20_ERROR_CRC",
+};
+
+static const uint8_t ds18b20_crc_table[256] = {
+    0, 94, 188, 226, 97, 63, 221, 131, 194, 156, 126, 32, 163, 253, 31, 65,
+	157, 195, 33, 127, 252, 162, 64, 30, 95, 1, 227, 189, 62, 96, 130, 220,
+	35, 125, 159, 193, 66, 28, 254, 160, 225, 191, 93, 3, 128, 222, 60, 98,
+	190, 224, 2, 92, 223, 129, 99, 61, 124, 34, 192, 158, 29, 67, 161, 255,
+	70, 24, 250, 164, 39, 121, 155, 197, 132, 218, 56, 102, 229, 187, 89, 7,
+	219, 133, 103, 57, 186, 228, 6, 88, 25, 71, 165, 251, 120, 38, 196, 154,
+	101, 59, 217, 135, 4, 90, 184, 230, 167, 249, 27, 69, 198, 152, 122, 36,
+	248, 166, 68, 26, 153, 199, 37, 123, 58, 100, 134, 216, 91, 5, 231, 185,
+	140, 210, 48, 110, 237, 179, 81, 15, 78, 16, 242, 172, 47, 113, 147, 205,
+	17, 79, 173, 243, 112, 46, 204, 146, 211, 141, 111, 49, 178, 236, 14, 80,
+	175, 241, 19, 77, 206, 144, 114, 44, 109, 51, 209, 143, 12, 82, 176, 238,
+	50, 108, 142, 208, 83, 13, 239, 177, 240, 174, 76, 18, 145, 207, 45, 115,
+	202, 148, 118, 40, 171, 245, 23, 73, 8, 86, 180, 234, 105, 55, 213, 139,
+	87, 9, 235, 181, 54, 104, 138, 212, 149, 203, 41, 119, 244, 170, 72, 22,
+	233, 183, 85, 11, 136, 214, 52, 106, 43, 117, 151, 201, 74, 20, 246, 168,
+	116, 42, 200, 150, 21, 75, 169, 247, 182, 232, 10, 84, 215, 137, 107, 53
 };
 
 static void ds18b20_write_0(const ds18b20_handle_t *const handle) {
@@ -70,6 +90,20 @@ static void ds18b20_read_byte(const ds18b20_handle_t *const handle, uint8_t *con
     }
 }
 
+static uint8_t ds18b20_calculate_crc(const uint8_t *const data, const uint8_t size) {
+    if(data) {
+        uint8_t crc = 0;
+
+        for(uint8_t byte = 0; byte < size; byte++) { // calculating CRC from a CRC lookup table
+            crc = ds18b20_crc_table[crc ^ data[byte]];
+        }
+
+        return crc; // if crc equals 0 then there is no error
+    } else {
+        return 1;
+    }
+}
+
 ds18b20_error_t ds18b20_reset(const ds18b20_handle_t *const handle) {
     if(!handle)
         return DS18B20_ERROR_HANDLE_NULL;
@@ -121,6 +155,9 @@ ds18b20_error_t ds18b20_read_rom(ds18b20_handle_t *const handle) {
         ds18b20_read_byte(handle, &handle->rom_code[i]);
     }
 
+    if(handle->crc_enabled && ds18b20_calculate_crc(handle->rom_code, DS18B20_ROM_CODE_SIZE)) // checking ROM code integrity
+        return DS18B20_ERROR_CRC;
+
     return DS18B20_OK;
 }
 
@@ -165,6 +202,9 @@ ds18b20_error_t ds18b20_read_scratchpad(ds18b20_handle_t *const handle, const ui
     if(num_of_bytes_to_read < DS18B20_SCRATCHPAD_SIZE) // if not reading the whole scratchpad then issue a reset
         ds18b20_reset(handle);
     
+    if(handle->crc_enabled && ds18b20_calculate_crc(handle->scratchpad, DS18B20_SCRATCHPAD_SIZE)) // checking scratchpad integrity
+        return DS18B20_ERROR_CRC;
+    
     return DS18B20_OK;
 }
 
@@ -193,6 +233,7 @@ ds18b20_error_t ds18b20_init(ds18b20_handle_t *const handle, const ds18b20_confi
 ds18b20_error_t ds18b20_init_default(ds18b20_handle_t *const handle, const gpio_num_t gpio_pin) {
     const ds18b20_config_t config = { // default settings
         .gpio_pin = gpio_pin,
+        .enable_crc = DS18B20_CRC_DEFAULT,
         .trigger_high = DS18B20_TRIGGER_HIGH_DEFAULT,
         .trigger_low = DS18B20_TRIGGER_LOW_DEFAULT,
         .resolution = DS18B20_RESOLUTION_DEFAULT
@@ -294,12 +335,7 @@ const char *ds18b20_error_to_string(const ds18b20_error_t error) {
 
 bool ds18b20_error_check(const ds18b20_error_t error, const char *const tag, const char *const message) {
     if(error) {
-        if(message) {
-            ESP_LOGE(tag, "%s%s", message, ds18b20_error_to_string(error));
-        }
-        else {
-            ESP_LOGE(tag, "%s", ds18b20_error_to_string(error));
-        }
+        ESP_LOGE(tag ? tag : DS18B20_TAG, "%s%s", message ? message : "", ds18b20_error_to_string(error));
 
         return true;
     }

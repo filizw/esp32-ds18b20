@@ -34,6 +34,11 @@
 #define DS18B20_TRIGGER_HIGH_DEFAULT DS18B20_MAX_TEMPERATURE
 #define DS18B20_TRIGGER_LOW_DEFAULT DS18B20_MIN_TEMPERATURE
 
+// CRC settings
+#define DS18B20_CRC_ENABLE 1
+#define DS18B20_CRC_DISABLE 0
+#define DS18B20_CRC_DEFAULT DS18B20_CRC_DISABLE
+
 #define DS18B20_TAG "ds18b20"
 
 typedef enum {
@@ -56,11 +61,14 @@ typedef enum {
     DS18B20_ERROR_INIT_FAILED,
     DS18B20_ERROR_READ_TEMPERATURE_FAILED,
     DS18B20_ERROR_CONFIGURATION_FAILED,
-    DS18B20_ERROR_NOT_INITIALIZED
+    DS18B20_ERROR_NOT_INITIALIZED,
+    DS18B20_ERROR_CRC
 } ds18b20_error_t;
 
 typedef struct {
     gpio_num_t gpio_pin;
+    uint8_t enable_crc;
+
     int8_t trigger_high;
     int8_t trigger_low;
     ds18b20_resolution_t resolution;
@@ -70,6 +78,7 @@ typedef struct {
     uint8_t is_init;
 
     gpio_num_t gpio_pin;
+    uint8_t crc_enabled;
 
     uint8_t rom_code[DS18B20_ROM_CODE_SIZE];
     uint8_t scratchpad[DS18B20_SCRATCHPAD_SIZE];
