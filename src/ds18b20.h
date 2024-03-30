@@ -41,32 +41,34 @@
 
 #define DS18B20_TAG "ds18b20"
 
+// checks if command is valid
+#define DS18B20_COMMAND_IS_VALID(command) !((command ^ 0xF0) & (command ^ 0x33) & (command ^ 0x55) & (command ^ 0xCC) & \
+                                            (command ^ 0xEC) & (command ^ 0x44) & (command ^ 0x4E) & (command ^ 0xBE) & \
+                                            (command ^ 0x48) & (command ^ 0xB8) & (command ^ 0xB4))
+
 typedef enum {
-    DS18B20_RESOLUTION_9_BIT = 0b00011111,
-    DS18B20_RESOLUTION_10_BIT = 0b00111111,
-    DS18B20_RESOLUTION_11_BIT = 0b01011111,
-    DS18B20_RESOLUTION_12_BIT = 0b01111111,
+    DS18B20_RESOLUTION_9_BIT = 0x1F,
+    DS18B20_RESOLUTION_10_BIT = 0x3F,
+    DS18B20_RESOLUTION_11_BIT = 0x2F,
+    DS18B20_RESOLUTION_12_BIT = 0x7F,
     DS18B20_RESOLUTION_DEFAULT = DS18B20_RESOLUTION_12_BIT
 } ds18b20_resolution_t;
 
 typedef enum {
     DS18B20_OK = 0,
     DS18B20_ERROR_HANDLE_NULL,
-    DS18B20_ERROR_CONFIG_NULL,
     DS18B20_ERROR_ARGUMENT_NULL,
+    DS18B20_ERROR_INVALID_GPIO,
+    DS18B20_ERROR_INVALID_ARGUMENT,
+    DS18B20_ERROR_INVALID_COMMAND,
     DS18B20_ERROR_RESET_FAILED,
-    DS18B20_ERROR_READ_ROM_FAILED,
-    DS18B20_ERROR_WRITE_SCRATCHPAD_FAILED,
-    DS18B20_ERROR_READ_SCRATCHPAD_FAILED,
-    DS18B20_ERROR_INIT_FAILED,
-    DS18B20_ERROR_READ_TEMPERATURE_FAILED,
     DS18B20_ERROR_CONFIGURATION_FAILED,
     DS18B20_ERROR_NOT_INITIALIZED,
     DS18B20_ERROR_CRC
 } ds18b20_error_t;
 
 typedef struct {
-    gpio_num_t gpio_pin;
+    gpio_num_t owb_pin;
     uint8_t enable_crc;
 
     int8_t trigger_high;
@@ -77,7 +79,7 @@ typedef struct {
 typedef struct {
     uint8_t is_init;
 
-    gpio_num_t gpio_pin;
+    gpio_num_t owb_pin;
     uint8_t crc_enabled;
 
     uint8_t rom_code[DS18B20_ROM_CODE_SIZE];
@@ -88,7 +90,7 @@ typedef struct {
 ds18b20_error_t ds18b20_reset(const ds18b20_handle_t *const handle);
 
 // sends commands to communicate with DS18B20
-ds18b20_error_t ds18b20_send_command(const ds18b20_handle_t *const handle, const uint8_t command);
+ds18b20_error_t ds18b20_send_command(const ds18b20_handle_t *const handle, uint8_t command);
 
 // reads the DS18B20's 64-bit ROM, can only be used when there is one slave on the bus
 ds18b20_error_t ds18b20_read_rom(ds18b20_handle_t *const handle);
@@ -96,13 +98,13 @@ ds18b20_error_t ds18b20_read_rom(ds18b20_handle_t *const handle);
 // allows the master to write 3 bytes of data to the DS18B20’s scratchpad
 ds18b20_error_t ds18b20_write_scratchpad(const ds18b20_handle_t *const handle, const uint8_t *const data);
 // allows the master to read the contents of the scratchpad
-ds18b20_error_t ds18b20_read_scratchpad(ds18b20_handle_t *const handle, const uint8_t num_of_bytes_to_read);
+ds18b20_error_t ds18b20_read_scratchpad(ds18b20_handle_t *const handle, uint8_t read_length);
 
 // initializes DS18B20
 ds18b20_error_t ds18b20_init(ds18b20_handle_t *const handle, const ds18b20_config_t *const config);
 
 // initializes DS18B20 with default settings
-ds18b20_error_t ds18b20_init_default(ds18b20_handle_t *const handle, const gpio_num_t gpio_pin);
+ds18b20_error_t ds18b20_init_default(ds18b20_handle_t *const handle, gpio_num_t gpio_pin);
 
 // configures DS18B20's trigger low, trigger high values and resolution
 ds18b20_error_t ds18b20_configure(ds18b20_handle_t *const handle, const ds18b20_config_t *const config);
@@ -110,17 +112,5 @@ ds18b20_error_t ds18b20_configure(ds18b20_handle_t *const handle, const ds18b20_
 // reads raw temperature from DS18B20 and stores it in handle
 // if temperature argument is not NULL, it stores converted raw temperature value there
 ds18b20_error_t ds18b20_read_temperature(ds18b20_handle_t *const handle, float *const temperature);
-
-// converts raw temperature stored in handle and stores it in temperature argument
-ds18b20_error_t ds18b20_get_temperature(const ds18b20_handle_t *const handle, float *const temperature);
-
-// gets trigger low, trigger high and resolution values stored in the DS18B20
-ds18b20_error_t ds18b20_get_configuration(const ds18b20_handle_t *const handle, ds18b20_config_t *const config);
-
-// returns string corresponding to an error code
-const char *ds18b20_error_to_string(const ds18b20_error_t error);
-
-// checks if error occured and prints it to the serial monitor
-bool ds18b20_error_check(const ds18b20_error_t error, const char *const tag, const char *const message);
 
 #endif
