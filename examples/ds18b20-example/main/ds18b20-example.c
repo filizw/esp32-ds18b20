@@ -1,6 +1,7 @@
 #include "ds18b20.h"
 
-#include "esp_timer.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 #define DS18B20_PIN GPIO_NUM_4
 #define CONVERSION_RESOLUTION DS18B20_RESOLUTION_10_BIT
