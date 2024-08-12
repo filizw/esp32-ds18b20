@@ -20,11 +20,14 @@
 #define DS18B20_COMMAND_RECALL_E 0xB8
 #define DS18B20_COMMAND_READ_POWER_SUPPLY 0xB4
 
+// maximum temperature conversion time
 #define DS18B20_MAX_CONVERSION_TIME 750000
 
+// minimum and maximum possible temperatures to measure
 #define DS18B20_MAX_TEMPERATURE 0x7D
 #define DS18B20_MIN_TEMPERATURE 0xC9
 
+// memory sizes
 #define DS18B20_ROM_CODE_SIZE 8
 #define DS18B20_SCRATCHPAD_SIZE 9
 
@@ -36,8 +39,6 @@
 #define DS18B20_CRC_ENABLE 1
 #define DS18B20_CRC_DISABLE 0
 #define DS18B20_CRC_DEFAULT DS18B20_CRC_DISABLE
-
-#define DS18B20_TAG "ds18b20"
 
 // checks if command is valid
 #define DS18B20_COMMAND_IS_VALID(command) !((command ^ 0xF0) & (command ^ 0x33) & (command ^ 0x55) & (command ^ 0xCC) & \
@@ -52,18 +53,7 @@ typedef enum {
     DS18B20_RESOLUTION_DEFAULT = DS18B20_RESOLUTION_12_BIT
 } ds18b20_resolution_t;
 
-typedef enum {
-    DS18B20_OK = 0,
-    DS18B20_ERROR_HANDLE_NULL,
-    DS18B20_ERROR_ARGUMENT_NULL,
-    DS18B20_ERROR_INVALID_GPIO,
-    DS18B20_ERROR_INVALID_ARGUMENT,
-    DS18B20_ERROR_INVALID_COMMAND,
-    DS18B20_ERROR_RESET_FAILED,
-    DS18B20_ERROR_CONFIGURATION_FAILED,
-    DS18B20_ERROR_NOT_INITIALIZED,
-    DS18B20_ERROR_CRC
-} ds18b20_error_t;
+typedef struct ds18b20_t *ds18b20_handle_t;
 
 typedef struct {
     gpio_num_t owb_pin;
@@ -74,41 +64,37 @@ typedef struct {
     ds18b20_resolution_t resolution;
 } ds18b20_config_t;
 
-typedef struct {
-    uint8_t is_init;
+// allocates memory for the DS18B20 handle and returns pointer to it
+ds18b20_handle_t ds18b20_create_handle(void);
 
-    gpio_num_t owb_pin;
-    uint8_t crc_enabled;
+// frees allocated memory for the DS18B20 handle
+void ds18b20_free_handle(ds18b20_handle_t handle);
 
-    uint8_t rom_code[DS18B20_ROM_CODE_SIZE];
-    uint8_t scratchpad[DS18B20_SCRATCHPAD_SIZE];
-} ds18b20_handle_t;
+// initializes all communication with the DS18B20
+esp_err_t ds18b20_reset(const ds18b20_handle_t handle);
 
-// initializes all communication with DS18B20
-ds18b20_error_t ds18b20_reset(const ds18b20_handle_t *const handle);
-
-// sends commands to communicate with DS18B20
-ds18b20_error_t ds18b20_send_command(const ds18b20_handle_t *const handle, uint8_t command);
+// sends commands to communicate with the DS18B20
+esp_err_t ds18b20_send_command(const ds18b20_handle_t handle, uint8_t command);
 
 // reads the DS18B20's 64-bit ROM, can only be used when there is one slave on the bus
-ds18b20_error_t ds18b20_read_rom(ds18b20_handle_t *const handle);
+esp_err_t ds18b20_read_rom(ds18b20_handle_t handle);
 
 // allows the master to write 3 bytes of data to the DS18B20’s scratchpad
-ds18b20_error_t ds18b20_write_scratchpad(const ds18b20_handle_t *const handle, const uint8_t *const data);
+esp_err_t ds18b20_write_scratchpad(const ds18b20_handle_t handle, const uint8_t *const data);
 // allows the master to read the contents of the scratchpad
-ds18b20_error_t ds18b20_read_scratchpad(ds18b20_handle_t *const handle, uint8_t read_length);
+esp_err_t ds18b20_read_scratchpad(ds18b20_handle_t handle, uint8_t read_length);
 
-// initializes DS18B20
-ds18b20_error_t ds18b20_init(ds18b20_handle_t *const handle, const ds18b20_config_t *const config);
+// initializes the DS18B20
+esp_err_t ds18b20_init(ds18b20_handle_t handle, const ds18b20_config_t *const config);
 
-// initializes DS18B20 with default settings
-ds18b20_error_t ds18b20_init_default(ds18b20_handle_t *const handle, gpio_num_t gpio_pin);
+// initializes the DS18B20 with default settings
+esp_err_t ds18b20_init_default(ds18b20_handle_t handle, gpio_num_t gpio_pin);
 
-// configures DS18B20's trigger low, trigger high values and resolution
-ds18b20_error_t ds18b20_configure(ds18b20_handle_t *const handle, const ds18b20_config_t *const config);
+// configures the DS18B20's trigger low, trigger high values and resolution
+esp_err_t ds18b20_configure(ds18b20_handle_t handle, const ds18b20_config_t *const config);
 
-// reads raw temperature from DS18B20 and stores it in handle
-// if temperature argument is not NULL, it stores converted raw temperature value there
-ds18b20_error_t ds18b20_read_temperature(ds18b20_handle_t *const handle, float *const temperature);
+// reads raw temperature from the DS18B20 and stores it in handle
+// if temperature argument is not NULL, it stores the converted raw temperature value in that argument
+esp_err_t ds18b20_read_temperature(ds18b20_handle_t handle, float *const temperature);
 
 #endif

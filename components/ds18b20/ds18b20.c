@@ -1,5 +1,15 @@
 #include "ds18b20.h"
 
+struct ds18b20_t {
+    uint8_t is_init;
+
+    gpio_num_t owb_pin;
+    uint8_t crc_enabled;
+
+    uint8_t rom_code[DS18B20_ROM_CODE_SIZE];
+    uint8_t scratchpad[DS18B20_SCRATCHPAD_SIZE];
+};
+
 static const uint8_t ds18b20_crc_table[256] = {
     0, 94, 188, 226, 97, 63, 221, 131, 194, 156, 126, 32, 163, 253, 31, 65,
 	157, 195, 33, 127, 252, 162, 64, 30, 95, 1, 227, 189, 62, 96, 130, 220,
@@ -69,7 +79,7 @@ static uint8_t ds18b20_read_byte(gpio_num_t owb_pin) {
 }
 
 static uint8_t ds18b20_check_crc(const uint8_t *const data, const uint8_t size) {
-    if(data) {
+    if(data != NULL) {
         uint8_t crc = 0;
 
         for(uint8_t byte = 0; byte < size; byte++) { // calculating CRC from a CRC lookup table
@@ -78,23 +88,28 @@ static uint8_t ds18b20_check_crc(const uint8_t *const data, const uint8_t size) 
 
         return crc; // if crc equals 0 then there is no error
     } else {
-        ESP_LOGE(DS18B20_TAG, "check_crc: data argument is NULL");
-
         return 1;
     }
 }
 
-ds18b20_error_t ds18b20_reset(const ds18b20_handle_t *const handle) {
-    if(!handle) {
-        ESP_LOGE(DS18B20_TAG, "reset: handle is NULL");
+ds18b20_handle_t ds18b20_create_handle(void) {
+    return malloc(sizeof(struct ds18b20_t));
+}
 
-        return DS18B20_ERROR_HANDLE_NULL;
+void ds18b20_free_handle(ds18b20_handle_t handle) {
+    if(handle == NULL) {
+        free(handle);
+        handle = NULL;
+    }
+}
+
+esp_err_t ds18b20_reset(const ds18b20_handle_t handle) {
+    if(handle == NULL) {
+        return ESP_ERR_INVALID_ARG;
     }
     
     if(!handle->is_init) {
-        ESP_LOGE(DS18B20_TAG, "reset: handle is not initialized");
-
-        return DS18B20_ERROR_NOT_INITIALIZED;
+        return ESP_ERR_INVALID_STATE;
     }
 
     gpio_set_direction(handle->owb_pin, GPIO_MODE_OUTPUT);
@@ -109,53 +124,41 @@ ds18b20_error_t ds18b20_reset(const ds18b20_handle_t *const handle) {
     const int recovery_level = gpio_get_level(handle->owb_pin);
 
     if(!presence_level && recovery_level) {
-        return DS18B20_OK;
+        return ESP_OK;
     }
     else {
-        ESP_LOGE(DS18B20_TAG, "reset: reset failed, wrong response from slave device");
-
-        return DS18B20_ERROR_RESET_FAILED;
+        return ESP_ERR_INVALID_RESPONSE;
     }
 }
 
-ds18b20_error_t ds18b20_send_command(const ds18b20_handle_t *const handle, uint8_t command) {
-    if(!handle) {
-        ESP_LOGE(DS18B20_TAG, "send_command: handle is NULL");
-
-        return DS18B20_ERROR_HANDLE_NULL;
+esp_err_t ds18b20_send_command(const ds18b20_handle_t handle, uint8_t command) {
+    if(handle == NULL) {
+        return ESP_ERR_INVALID_ARG;
     }
     
     if(!handle->is_init) {
-        ESP_LOGE(DS18B20_TAG, "send_command: handle is not initialized");
-
-        return DS18B20_ERROR_NOT_INITIALIZED;
+        return ESP_ERR_INVALID_STATE;
     }
 
     if(!DS18B20_COMMAND_IS_VALID(command)) {
-        ESP_LOGE(DS18B20_TAG, "send_command: invalid command");
-
-        return DS18B20_ERROR_INVALID_COMMAND;
+        return ESP_ERR_INVALID_ARG;
     }
 
     ds18b20_write_byte(handle->owb_pin, command);
 
-    return DS18B20_OK;
+    return ESP_OK;
 }
 
-ds18b20_error_t ds18b20_read_rom(ds18b20_handle_t *const handle) {
-    if(!handle) {
-        ESP_LOGE(DS18B20_TAG, "read_rom: handle is NULL");
-
-        return DS18B20_ERROR_HANDLE_NULL;
+esp_err_t ds18b20_read_rom(ds18b20_handle_t handle) {
+    if(handle == NULL) {
+        return ESP_ERR_INVALID_ARG;
     }
     
     if(!handle->is_init) {
-        ESP_LOGE(DS18B20_TAG, "read_rom: handle is not initialized");
-
-        return DS18B20_ERROR_NOT_INITIALIZED;
+        return ESP_ERR_INVALID_STATE;
     }
 
-    ds18b20_error_t err;
+    esp_err_t err;
 
     if((err = ds18b20_reset(handle)))
         return err;
@@ -168,34 +171,26 @@ ds18b20_error_t ds18b20_read_rom(ds18b20_handle_t *const handle) {
     }
 
     if(handle->crc_enabled && ds18b20_check_crc(handle->rom_code, DS18B20_ROM_CODE_SIZE)) { // checking ROM code integrity
-        ESP_LOGE(DS18B20_TAG, "read_rom: CRC failed");
-
-        return DS18B20_ERROR_CRC;
+        return ESP_ERR_INVALID_CRC;
     }
 
-    return DS18B20_OK;
+    return ESP_OK;
 }
 
-ds18b20_error_t ds18b20_write_scratchpad(const ds18b20_handle_t *const handle, const uint8_t *const data) {
-    if(!handle) {
-        ESP_LOGE(DS18B20_TAG, "write_scratchpad: handle is NULL");
-
-        return DS18B20_ERROR_HANDLE_NULL;
+esp_err_t ds18b20_write_scratchpad(const ds18b20_handle_t handle, const uint8_t *const data) {
+    if(handle == NULL) {
+        return ESP_ERR_INVALID_ARG;
     }
     
     if(!handle->is_init) {
-        ESP_LOGE(DS18B20_TAG, "write_scratchpad: handle is not initialized");
-
-        return DS18B20_ERROR_NOT_INITIALIZED;
+        return ESP_ERR_INVALID_STATE;
     }
     
-    if(!data) {
-        ESP_LOGE(DS18B20_TAG, "write_scratchpad: data argument is NULL");
-
-        return DS18B20_ERROR_ARGUMENT_NULL;
+    if(data == NULL) {
+        return ESP_ERR_INVALID_ARG;
     }
 
-    ds18b20_error_t err;
+    esp_err_t err;
 
     if((err = ds18b20_reset(handle)))
         return err;
@@ -210,29 +205,23 @@ ds18b20_error_t ds18b20_write_scratchpad(const ds18b20_handle_t *const handle, c
     ds18b20_write_byte(handle->owb_pin, data[1]); // writing to tl register
     ds18b20_write_byte(handle->owb_pin, data[2]); // writing to configuration register
 
-    return DS18B20_OK;
+    return ESP_OK;
 }
 
-ds18b20_error_t ds18b20_read_scratchpad(ds18b20_handle_t *const handle, uint8_t read_length) {
-    if(!handle) {
-        ESP_LOGE(DS18B20_TAG, "read_scratchpad: handle is NULL");
-
-        return DS18B20_ERROR_HANDLE_NULL;
+esp_err_t ds18b20_read_scratchpad(ds18b20_handle_t handle, uint8_t read_length) {
+    if(handle == NULL) {
+        return ESP_ERR_INVALID_ARG;
     }
     
     if(!handle->is_init) {
-        ESP_LOGE(DS18B20_TAG, "read_scratchpad: handle is not initialized");
-
-        return DS18B20_ERROR_NOT_INITIALIZED;
+        return ESP_ERR_INVALID_STATE;
     }
 
     if(read_length < 1 && read_length > DS18B20_SCRATCHPAD_SIZE) {
-        ESP_LOGE(DS18B20_TAG, "read_scratchpad: invalid value of read_length");
-
-        return DS18B20_ERROR_INVALID_ARGUMENT;
+        return ESP_ERR_INVALID_SIZE;
     }
 
-    ds18b20_error_t err;
+    esp_err_t err;
 
     if((err = ds18b20_reset(handle)))
         return err;
@@ -251,41 +240,35 @@ ds18b20_error_t ds18b20_read_scratchpad(ds18b20_handle_t *const handle, uint8_t 
         ds18b20_reset(handle);
     
     if(handle->crc_enabled && ds18b20_check_crc(handle->scratchpad, DS18B20_SCRATCHPAD_SIZE)) { // checking scratchpad integrity
-        ESP_LOGE(DS18B20_TAG, "read_scratchpad: CRC failed");
-
-        return DS18B20_ERROR_CRC;
+        return ESP_ERR_INVALID_CRC;
     }
     
-    return DS18B20_OK;
+    return ESP_OK;
 }
 
-ds18b20_error_t ds18b20_init(ds18b20_handle_t *const handle, const ds18b20_config_t *const config) {
-    if(!handle) {
-        ESP_LOGE(DS18B20_TAG, "init: handle is NULL");
-
-        return DS18B20_ERROR_HANDLE_NULL;
+esp_err_t ds18b20_init(ds18b20_handle_t handle, const ds18b20_config_t *const config) {
+    if(handle == NULL) {
+        return ESP_ERR_INVALID_ARG;
     }
 
     handle->is_init = true;
     
-    if(!config) {
+    if(config == NULL) {
         handle->is_init = false;
-        ESP_LOGE(DS18B20_TAG, "init: config is NULL");
 
-        return DS18B20_ERROR_ARGUMENT_NULL;
+        return ESP_ERR_INVALID_ARG;
     }
 
     if(!GPIO_IS_VALID_GPIO(config->owb_pin)) {
         handle->is_init = false;
-        ESP_LOGE(DS18B20_TAG, "init: invalid gpio");
 
-        return DS18B20_ERROR_INVALID_GPIO;
+        return ESP_ERR_INVALID_ARG;
     }
     
     handle->owb_pin = config->owb_pin;
     handle->crc_enabled = config->enable_crc;
 
-    ds18b20_error_t err;
+    esp_err_t err;
 
     if((err = ds18b20_configure(handle, config))) { // send configuation to the DS18B20
         handle->is_init = false;
@@ -299,10 +282,10 @@ ds18b20_error_t ds18b20_init(ds18b20_handle_t *const handle, const ds18b20_confi
         return err;
     }
     
-    return DS18B20_OK;
+    return ESP_OK;
 }
 
-ds18b20_error_t ds18b20_init_default(ds18b20_handle_t *const handle, gpio_num_t owb_pin) {
+esp_err_t ds18b20_init_default(ds18b20_handle_t handle, gpio_num_t owb_pin) {
     const ds18b20_config_t config = { // default settings
         .owb_pin = owb_pin,
         .enable_crc = DS18B20_CRC_DEFAULT,
@@ -314,23 +297,17 @@ ds18b20_error_t ds18b20_init_default(ds18b20_handle_t *const handle, gpio_num_t 
     return ds18b20_init(handle, &config);
 }
 
-ds18b20_error_t ds18b20_configure(ds18b20_handle_t *const handle, const ds18b20_config_t *const config) {
-    if(!handle) {
-        ESP_LOGE(DS18B20_TAG, "configure: handle is NULL");
-
-        return DS18B20_ERROR_HANDLE_NULL;
+esp_err_t ds18b20_configure(ds18b20_handle_t handle, const ds18b20_config_t *const config) {
+    if(handle == NULL) {
+        return ESP_ERR_INVALID_ARG;
     }
     
     if(!handle->is_init) {
-        ESP_LOGE(DS18B20_TAG, "configure: handle is not initialized");
-
-        return DS18B20_ERROR_NOT_INITIALIZED;
+        return ESP_ERR_INVALID_STATE;
     }
     
-    if(!config) {
-        ESP_LOGE(DS18B20_TAG, "configure: config is NULL");
-
-        return DS18B20_ERROR_ARGUMENT_NULL;
+    if(config == NULL) {
+        return ESP_ERR_INVALID_ARG;
     }
 
     const uint8_t data[] = { // casting to the appropriate data type
@@ -339,7 +316,7 @@ ds18b20_error_t ds18b20_configure(ds18b20_handle_t *const handle, const ds18b20_
         config->resolution
     };
 
-    ds18b20_error_t err;
+    esp_err_t err;
 
     if((err = ds18b20_write_scratchpad(handle, data))) // writing configuration to the DS18B20
         return err;
@@ -350,28 +327,22 @@ ds18b20_error_t ds18b20_configure(ds18b20_handle_t *const handle, const ds18b20_
     if((int8_t)handle->scratchpad[2] != config->trigger_high ||
        (int8_t)handle->scratchpad[3] != config->trigger_low ||
        (ds18b20_resolution_t)handle->scratchpad[4] != config->resolution) {
-        ESP_LOGE(DS18B20_TAG, "configure: config between master and slave is not matching");
-
-        return DS18B20_ERROR_CONFIGURATION_FAILED;
+        return ESP_FAIL;
     }
 
-    return DS18B20_OK;
+    return ESP_OK;
 }
 
-ds18b20_error_t ds18b20_read_temperature(ds18b20_handle_t *const handle, float *const temperature) {
-    if(!handle) {
-        ESP_LOGE(DS18B20_TAG, "read_temperature: handle is NULL");
-
-        return DS18B20_ERROR_HANDLE_NULL;
+esp_err_t ds18b20_read_temperature(ds18b20_handle_t handle, float *const temperature) {
+    if(handle == NULL) {
+        return ESP_ERR_INVALID_ARG;
     }
     
     if(!handle->is_init) {
-        ESP_LOGE(DS18B20_TAG, "read_temperature: handle is not initialized");
-
-        return DS18B20_ERROR_NOT_INITIALIZED;
+        return ESP_ERR_INVALID_STATE;
     }
 
-    ds18b20_error_t err;
+    esp_err_t err;
 
     if((err = ds18b20_reset(handle)))
         return err;
@@ -392,5 +363,5 @@ ds18b20_error_t ds18b20_read_temperature(ds18b20_handle_t *const handle, float *
         *temperature = ((handle->scratchpad[1] << 8) | (handle->scratchpad[0] & mask)) / 16.0f; // converting raw temperature to degrees
     }
 
-    return DS18B20_OK;
+    return ESP_OK;
 }
