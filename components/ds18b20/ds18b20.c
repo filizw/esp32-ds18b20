@@ -31,34 +31,34 @@ static const uint8_t ds18b20_crc_table[256] = {
 
 static void ds18b20_write_0(gpio_num_t owb_pin) {
     gpio_set_direction(owb_pin, GPIO_MODE_OUTPUT);
-    gpio_set_level(owb_pin, 0); // pulling bus low for 60us
+    gpio_set_level(owb_pin, 0); // pulling the bus low for 60us
     ets_delay_us(60);
-    gpio_set_direction(owb_pin, GPIO_MODE_INPUT); // releasing bus
+    gpio_set_direction(owb_pin, GPIO_MODE_INPUT); // releasing the bus
     ets_delay_us(2);
 }
 
 static void ds18b20_write_1(gpio_num_t owb_pin) {
     gpio_set_direction(owb_pin, GPIO_MODE_OUTPUT);
-    gpio_set_level(owb_pin, 0); // pulling bus low for 2us
+    gpio_set_level(owb_pin, 0); // pulling the bus low for 2us
     ets_delay_us(2);
-    gpio_set_direction(owb_pin, GPIO_MODE_INPUT); // releasing bus
+    gpio_set_direction(owb_pin, GPIO_MODE_INPUT); // releasing the bus
     ets_delay_us(60);
 }
 
 static uint8_t ds18b20_read_bit(gpio_num_t owb_pin) {
     gpio_set_direction(owb_pin, GPIO_MODE_OUTPUT);
-    gpio_set_level(owb_pin, 0); // pulling bus low fow 2us
+    gpio_set_level(owb_pin, 0); // pulling the bus low fow 2us
     ets_delay_us(2);
-    gpio_set_direction(owb_pin, GPIO_MODE_INPUT); // releasing bus
+    gpio_set_direction(owb_pin, GPIO_MODE_INPUT); // releasing the bus
     ets_delay_us(8);
-    uint8_t bit = gpio_get_level(owb_pin); // storing value send by the DS18B20
+    uint8_t bit = gpio_get_level(owb_pin); // storing the value send by the DS18B20
     ets_delay_us(52);
 
     return bit;
 }
 
 static void ds18b20_write_byte(gpio_num_t owb_pin, uint8_t byte) {
-    for(uint8_t i = 0; i < 8; i++) { // iterating through single bits and sending them to the DS18B20
+    for(uint8_t i = 0; i < 8; i++) { // iterating through the single bits and sending them to the DS18B20
         if(((byte >> i) & 1) == 0)
             ds18b20_write_0(owb_pin);
         else
@@ -82,7 +82,7 @@ static uint8_t ds18b20_check_crc(const uint8_t *const data, const uint8_t size) 
     if(data != NULL) {
         uint8_t crc = 0;
 
-        for(uint8_t byte = 0; byte < size; byte++) { // calculating CRC from a CRC lookup table
+        for(uint8_t byte = 0; byte < size; byte++) { // calculating CRC from the CRC lookup table
             crc = ds18b20_crc_table[crc ^ data[byte]];
         }
 
@@ -92,8 +92,14 @@ static uint8_t ds18b20_check_crc(const uint8_t *const data, const uint8_t size) 
     }
 }
 
-ds18b20_handle_t ds18b20_create_handle(void) {
-    return malloc(sizeof(struct ds18b20_t));
+ds18b20_handle_t ds18b20_create_handle(gpio_num_t owb_pin) {
+    ds18b20_handle_t handle = malloc(sizeof(struct ds18b20_t));
+
+    if(handle != NULL && GPIO_IS_VALID_GPIO(owb_pin)) {
+        handle->owb_pin = owb_pin;
+    }
+
+    return handle;
 }
 
 void ds18b20_free_handle(ds18b20_handle_t handle) {
@@ -113,11 +119,11 @@ esp_err_t ds18b20_reset(const ds18b20_handle_t handle) {
     }
 
     gpio_set_direction(handle->owb_pin, GPIO_MODE_OUTPUT);
-    gpio_set_level(handle->owb_pin, 0); // reset pulse, pulling bus low for 480us
+    gpio_set_level(handle->owb_pin, 0); // reset pulse, pulling the bus low for 480us
     ets_delay_us(480);
-    gpio_set_direction(handle->owb_pin, GPIO_MODE_INPUT); // releasing bus
+    gpio_set_direction(handle->owb_pin, GPIO_MODE_INPUT); // releasing the bus
 
-    ets_delay_us(70); // waiting for presense pulse
+    ets_delay_us(70); // waiting for the presense pulse
     const int presence_level = gpio_get_level(handle->owb_pin);
 
     ets_delay_us(410);
@@ -170,9 +176,23 @@ esp_err_t ds18b20_read_rom(ds18b20_handle_t handle) {
         handle->rom_code[i] = ds18b20_read_byte(handle->owb_pin);
     }
 
-    if(handle->crc_enabled && ds18b20_check_crc(handle->rom_code, DS18B20_ROM_CODE_SIZE)) { // checking ROM code integrity
+    if(handle->crc_enabled && ds18b20_check_crc(handle->rom_code, DS18B20_ROM_CODE_SIZE)) { // checking the ROM code integrity
         return ESP_ERR_INVALID_CRC;
     }
+
+    return ESP_OK;
+}
+
+esp_err_t ds18b20_get_rom(ds18b20_handle_t handle, uint8_t *const buffer, uint8_t buf_size) {
+    if(handle == NULL || buffer == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    if(buf_size < 1 || buf_size > DS18B20_ROM_CODE_SIZE) {
+        return ESP_ERR_INVALID_SIZE;
+    }
+
+    memcpy(buffer, handle->rom_code, buf_size);
 
     return ESP_OK;
 }
@@ -201,9 +221,9 @@ esp_err_t ds18b20_write_scratchpad(const ds18b20_handle_t handle, const uint8_t 
     if((err = ds18b20_send_command(handle, DS18B20_COMMAND_WRITE_SCRATCHPAD)))
         return err;
 
-    ds18b20_write_byte(handle->owb_pin, data[0]); // writing to th register
-    ds18b20_write_byte(handle->owb_pin, data[1]); // writing to tl register
-    ds18b20_write_byte(handle->owb_pin, data[2]); // writing to configuration register
+    ds18b20_write_byte(handle->owb_pin, data[0]); // writing to the th register
+    ds18b20_write_byte(handle->owb_pin, data[1]); // writing to the tl register
+    ds18b20_write_byte(handle->owb_pin, data[2]); // writing to the configuration register
 
     return ESP_OK;
 }
@@ -217,7 +237,7 @@ esp_err_t ds18b20_read_scratchpad(ds18b20_handle_t handle, uint8_t read_length) 
         return ESP_ERR_INVALID_STATE;
     }
 
-    if(read_length < 1 && read_length > DS18B20_SCRATCHPAD_SIZE) {
+    if(read_length < 1 || read_length > DS18B20_SCRATCHPAD_SIZE) {
         return ESP_ERR_INVALID_SIZE;
     }
 
@@ -239,10 +259,24 @@ esp_err_t ds18b20_read_scratchpad(ds18b20_handle_t handle, uint8_t read_length) 
     if(read_length < DS18B20_SCRATCHPAD_SIZE) // if not reading the whole scratchpad then issue a reset
         ds18b20_reset(handle);
     
-    if(handle->crc_enabled && ds18b20_check_crc(handle->scratchpad, DS18B20_SCRATCHPAD_SIZE)) { // checking scratchpad integrity
+    if(handle->crc_enabled && ds18b20_check_crc(handle->scratchpad, DS18B20_SCRATCHPAD_SIZE)) { // checking the scratchpad integrity
         return ESP_ERR_INVALID_CRC;
     }
     
+    return ESP_OK;
+}
+
+esp_err_t ds18b20_get_scratchpad(ds18b20_handle_t handle, uint8_t *const buffer, uint8_t buf_size) {
+    if(handle == NULL || buffer == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    if(buf_size < 1 || buf_size > DS18B20_SCRATCHPAD_SIZE) {
+        return ESP_ERR_INVALID_SIZE;
+    }
+
+    memcpy(buffer, handle->scratchpad, buf_size);
+
     return ESP_OK;
 }
 
@@ -259,13 +293,6 @@ esp_err_t ds18b20_init(ds18b20_handle_t handle, const ds18b20_config_t *const co
         return ESP_ERR_INVALID_ARG;
     }
 
-    if(!GPIO_IS_VALID_GPIO(config->owb_pin)) {
-        handle->is_init = false;
-
-        return ESP_ERR_INVALID_ARG;
-    }
-    
-    handle->owb_pin = config->owb_pin;
     handle->crc_enabled = config->enable_crc;
 
     esp_err_t err;
@@ -276,7 +303,7 @@ esp_err_t ds18b20_init(ds18b20_handle_t handle, const ds18b20_config_t *const co
         return err;
     }
     
-    if((err = ds18b20_read_rom(handle))) { // read ROM code and store it in a handle
+    if((err = ds18b20_read_rom(handle))) { // read the ROM code and store it in the handle
         handle->is_init = false;
 
         return err;
@@ -285,9 +312,8 @@ esp_err_t ds18b20_init(ds18b20_handle_t handle, const ds18b20_config_t *const co
     return ESP_OK;
 }
 
-esp_err_t ds18b20_init_default(ds18b20_handle_t handle, gpio_num_t owb_pin) {
+esp_err_t ds18b20_init_default(ds18b20_handle_t handle) {
     const ds18b20_config_t config = { // default settings
-        .owb_pin = owb_pin,
         .enable_crc = DS18B20_CRC_DEFAULT,
         .trigger_high = DS18B20_TRIGGER_HIGH_DEFAULT,
         .trigger_low = DS18B20_TRIGGER_LOW_DEFAULT,
@@ -309,6 +335,8 @@ esp_err_t ds18b20_configure(ds18b20_handle_t handle, const ds18b20_config_t *con
     if(config == NULL) {
         return ESP_ERR_INVALID_ARG;
     }
+
+    handle->crc_enabled = config->enable_crc;
 
     const uint8_t data[] = { // casting to the appropriate data type
         config->trigger_high,
@@ -353,14 +381,14 @@ esp_err_t ds18b20_read_temperature(ds18b20_handle_t handle, float *const tempera
     if((err = ds18b20_send_command(handle, DS18B20_COMMAND_CONVERT)))
         return err;
 
-    ets_delay_us(DS18B20_MAX_CONVERSION_TIME >> (3 - (handle->scratchpad[4] >> 5))); // calculating conversion time using a resolution value
+    ets_delay_us(DS18B20_MAX_CONVERSION_TIME >> (3 - (handle->scratchpad[4] >> 5))); // calculating the conversion time using a resolution value
 
-    if((err = ds18b20_read_scratchpad(handle, (handle->crc_enabled ? DS18B20_SCRATCHPAD_SIZE : 2)))) // reading only a temperature value
+    if((err = ds18b20_read_scratchpad(handle, (handle->crc_enabled ? DS18B20_SCRATCHPAD_SIZE : 2)))) // reading only the temperature value
         return err;
     
     if(temperature != NULL) {
-        const uint8_t mask = 0xff << (3 - (handle->scratchpad[4] >> 5)); // calculating mask that depends on a resolution
-        *temperature = ((handle->scratchpad[1] << 8) | (handle->scratchpad[0] & mask)) / 16.0f; // converting raw temperature to degrees
+        const uint8_t mask = 0xff << (3 - (handle->scratchpad[4] >> 5)); // calculating the mask that depends on a resolution
+        *temperature = ((handle->scratchpad[1] << 8) | (handle->scratchpad[0] & mask)) / 16.0f; // converting the raw temperature to degrees
     }
 
     return ESP_OK;

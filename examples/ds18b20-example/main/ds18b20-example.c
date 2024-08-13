@@ -19,10 +19,9 @@ void read_temperature(void *arg) {
 }
 
 void app_main(void) {
-    handle = ds18b20_create_handle();
+    handle = ds18b20_create_handle(DS18B20_PIN);
 
     ds18b20_config_t config = {
-        .owb_pin = DS18B20_PIN,
         .enable_crc = DS18B20_CRC_ENABLE,
         .trigger_high = DS18B20_MAX_TEMPERATURE,
         .trigger_low = DS18B20_MIN_TEMPERATURE,
